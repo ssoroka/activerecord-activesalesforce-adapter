@@ -6,6 +6,12 @@ require 'builder'
 
 
 module RForce
+  class ConnectionError < Exception
+    def initialize(msg)
+      super("Could not connect to Salesforce: #{msg}")
+    end
+  end
+  
   # Implements the connection to the SalesForce server.
   class Binding
     include RForce
@@ -76,7 +82,14 @@ module RForce
 
       response = call_remote(:login, [:username, user, :password, password])
       
-      raise "Incorrect user name / password [#{response.fault}]" if response.fault.present? # unless response.loginResponse
+      # {:Fault=>{:faultcode=>"sf:API_DISABLED_FOR_ORG", :faultstring=>"API_DISABLED_FOR_ORG: API is not enabled for this Organization or Partner", :detail=>{:UnexpectedErrorFault=>{:exceptionCode=>"API_DISABLED_FOR_ORG", :exceptionMessage=>"API is not enabled for this Organization or Partner"}}}}
+      unless response.loginResponse
+        if response[:Fault] && response[:Fault][:faultstring]
+          raise ConnectionError.new("#{response[:Fault][:faultstring]} (#{response[:Fault][:faultcode]})")
+        else
+          raise ConnectionError.new("Incorrect user name / password")
+        end
+      end
 
       result = response[:loginResponse][:result]
       @session_id = result[:sessionId]
