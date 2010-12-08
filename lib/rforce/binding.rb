@@ -76,7 +76,7 @@ module RForce
 
       response = call_remote(:login, [:username, user, :password, password])
       
-      raise "Incorrect user name / password [#{response.fault}]" unless response.loginResponse
+      raise "Incorrect user name / password [#{response.fault}]" if response.fault.present? # unless response.loginResponse
 
       result = response[:loginResponse][:result]
       @session_id = result[:sessionId]
